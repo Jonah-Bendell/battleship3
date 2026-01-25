@@ -1,0 +1,215 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship</title>
+
+    <style>
+#game-container {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.player-area {
+    margin: 20px;
+    text-align: center;
+    transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.player-area.is-active {
+    transform: translateY(-6px);
+}
+
+.player-area.is-inactive {
+    opacity: 0.5;
+}
+
+.container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.playerSel {
+    padding: 8px 14px;
+    border: 2px solid #1c3d5a;
+    background-color: #f3f7fb;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.playerSel.is-active {
+    background-color: #1c3d5a;
+    color: white;
+}
+
+.game-board {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    width: 300px;
+    height: 300px;
+    border: 2px solid black;
+}
+
+.cell {
+    border: 1px solid #ccc;
+    background-color: lightblue;
+    cursor: pointer;
+}
+
+.cell:hover {
+    background-color: #add8e6;
+}
+
+.hit {
+    background-color: red;
+}
+
+.miss {
+    background-color: gray;
+}
+.shipRand{
+    background-color: red;
+}
+.shipRand:hover{
+    background-color: pink;
+}
+    </style>
+</head>
+<body>
+<!--Player selection buttons-->
+    <h1>Select Player</h1>
+    <div class="container">
+        <button class="playerSel" data-player="1">Player 1</button>
+        <button class="playerSel" data-player="2">Player 2</button>
+        <button class="playerSel" data-player="3">Player 3</button>
+    </div>
+
+<!--Boards-->
+ <h1>3 Player Battleship</h1>
+    <div id="game-container">
+        <div class="player-area" data-player="1">
+            <h2>Player 1</h2>
+            <div id="board-p1" class="game-board"></div>
+            <div id="messages-p1" class="messages"></div>
+        </div>
+        <div class="player-area" data-player="2">
+            <h2>Player 2</h2>
+            <div id="board-p2" class="game-board"></div>
+            <div id="messages-p2" class="messages"></div>
+        </div>
+        <div class="player-area" data-player="3">
+            <h2>Player 3</h2>
+            <div id="board-p3" class="game-board"></div>
+            <div id="messages-p3" class="messages"></div>
+        </div>
+    </div>
+<div class="container">
+    <button class="shipRand" > Randomize Ships</button>
+</div>
+    
+
+
+
+    <script>
+        //Board creation
+const boardSize = 10;
+
+function buildBoard(boardElement) {
+    for (let row = 0; row < boardSize; row += 1) {
+        for (let col = 0; col < boardSize; col += 1) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            boardElement.appendChild(cell);
+        }
+    }
+}
+
+const boards = document.querySelectorAll(".game-board");
+boards.forEach((board) => buildBoard(board));
+
+//Boat location randomizer
+const airCraftCarrier = 5;
+const shipBattle = 4;
+const shipCruiser = 3;
+const shipDestroyer = 2;
+const ships = [
+    { name: "Aircraft Carrier", size: airCraftCarrier },
+    { name: "Battleship", size: shipBattle },
+    { name: "Cruiser", size: shipCruiser },
+    { name: "Destroyer", size: shipDestroyer }
+];
+
+
+
+let shipPlace = Math.floor(Math.random() * 8) + 1;
+let HororVert = Math.floor(Math.random() * 2) + 1;
+
+function canPlaceShip(){
+    if (HororVert = 1){        
+        isHor = true;
+    } else{ 
+        isHor = false;
+
+    }
+
+
+    if(hor + size > boardSize) {return false;
+    }else(hor + size > boardSize){
+        return false    
+
+    }
+
+
+}
+function shipRand(){
+    for(let rowSel = 0; row < shipPlace; rowSel += 1) {
+        for(let colSel = 0; col < shipPlace; colSel += 1){
+            cellSel = cell[row][col];
+        }
+    }
+}
+
+addEventListener('click', shipRand)
+
+
+//Player selection mechanic
+//use API to lock button selections for each player and give the stuff needed to play to that player
+const playerButtons = document.querySelectorAll(".playerSel");
+const playerAreas = document.querySelectorAll(".player-area");
+
+function setActivePlayer(playerId) {
+    playerButtons.forEach((button) => {
+        const isActive = button.dataset.player === playerId;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+    });
+
+    playerAreas.forEach((area) => {
+        const isActive = area.dataset.player === playerId;
+        area.classList.toggle("is-active", isActive);
+        area.classList.toggle("is-inactive", !isActive);
+        const title = area.querySelector("h2");
+        if (title) {
+            let label = isActive ? "Your Board" : "Opponent";
+            title.textContent = `Player ${area.dataset.player} (${label})`;
+        }
+    });
+}
+
+
+playerButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        setActivePlayer(button.dataset.player);
+    });
+});
+    </script>
+</body>
+</html>
