@@ -66,6 +66,10 @@
     background-color: #add8e6;
 }
 
+.ship {
+    background-color: #2c5f8a;
+}
+
 .hit {
     background-color: red;
 }
@@ -73,11 +77,18 @@
 .miss {
     background-color: gray;
 }
-.shipRand{
+
+.shipRand {
     background-color: red;
 }
-.shipRand:hover{
+
+.shipRand:hover {
     background-color: pink;
+}
+
+.shipRand:disabled {
+    background-color: #7a7a7a;
+    cursor: not-allowed;
 }
     </style>
 </head>
@@ -110,9 +121,8 @@
         </div>
     </div>
 <div class="container">
-    <button class="shipRand" > Randomize Ships</button>
+    <button class="shipRand">Randomize Ships</button>
 </div>
-    
 
 
 
@@ -136,56 +146,76 @@ const boards = document.querySelectorAll(".game-board");
 boards.forEach((board) => buildBoard(board));
 
 //Boat location randomizer
-const airCraftCarrier = 5;
-const shipBattle = 4;
-const shipCruiser = 3;
-const shipDestroyer = 2;
 const ships = [
-    { name: "Aircraft Carrier", size: airCraftCarrier },
-    { name: "Battleship", size: shipBattle },
-    { name: "Cruiser", size: shipCruiser },
-    { name: "Destroyer", size: shipDestroyer }
+    { name: "Aircraft Carrier", size: 5 },
+    { name: "Battleship", size: 4 },
+    { name: "Cruiser", size: 3 },
+    { name: "Destroyer", size: 2 }
 ];
 
-
-
-let shipPlace = Math.floor(Math.random() * 8) + 1;
-let HororVert = Math.floor(Math.random() * 2) + 1;
-
-function canPlaceShip(){
-    if (HororVert = 1){        
-        isHor = true;
-    } else{ 
-        isHor = false;
-
-    }
-
-
-    if(hor + size > boardSize) {return false;
-    }else(hor + size > boardSize);{
-        return false    
-
-    };
-
-
+function getCell(board, row, col) {
+    let index = row * boardSize + col;
+    return board.querySelectorAll(".cell")[index];
 }
-function shipRand(){
-    for(let rowSel = 0; row < shipPlace; rowSel += 1) {
-        for(let colSel = 0; col < shipPlace; colSel += 1){
-            cellSel = cell[row][col];
+
+function randomInt(maxExclusive) { //AI helped a lot with this for function cuz I was so lost but I placed comments to show I can describe whats going on
+    return Math.floor(Math.random() * maxExclusive);
+}
+
+function placeShipsOnBoard(board) {
+    const cells = board.querySelectorAll(".cell");
+    cells.forEach((cell) => cell.classList.remove("ship"));
+
+    const occupied = new Set();
+
+    ships.forEach((ship) => {
+        let placed = false;
+
+        while (!placed) {
+            const isHorizontal = Math.random() < 0.5; //randomize if the ship will hor or vert
+            const maxRow = isHorizontal ? boardSize - 1 : boardSize - ship.size; //malmost like shifting the coord system for vert and hor
+            const maxCol = isHorizontal ? boardSize - ship.size : boardSize - 1;
+            const startRow = randomInt(maxRow + 1); //selects starting position
+            const startCol = randomInt(maxCol + 1);
+            const coords = [];
+
+            for (let i = 0; i < ship.size; i += 1) { //AI helped a lot with this for loop cuz I was so lost but I placed comments to show I can describe whats going on
+                const row = startRow + (isHorizontal ? 0 : i);
+                const col = startCol + (isHorizontal ? i : 0); //here we're assigning variables for the index of the row and oclumn
+                const key = `${row},${col}`; //this is the index of the square
+
+                if (occupied.has(key)) {
+                    coords.length = 0; //this is saying if the square is occupied don't place anything and break the loop
+                    break;
+                }
+
+                coords.push({ row, col, key }); // otherwise these coords can place a ship 
+            }
+
+            if (coords.length === ship.size) { //check the length of the coords that can place a ship and place a ship acordingly
+                coords.forEach(({ row, col, key }) => {
+                    occupied.add(key);
+                    const cell = getCell(board, row, col); // will mark taken squares ass occupied
+                    if (cell) {
+                        cell.classList.add("ship"); //add the ship class to each of the squares for css to take place
+                    }
+                });
+                placed = true; // end the loop
+            }
         }
-    }
+    });
 }
-
-addEventListener('click', shipRand)
-
 
 //Player selection mechanic
-//use API to lock button selections for each player and give the stuff needed to play to that player
 const playerButtons = document.querySelectorAll(".playerSel");
 const playerAreas = document.querySelectorAll(".player-area");
+const shipButton = document.querySelector(".shipRand");
+let activePlayerId = null;
+let shipsLocked = false;
 
 function setActivePlayer(playerId) {
+    activePlayerId = playerId;
+
     playerButtons.forEach((button) => {
         const isActive = button.dataset.player === playerId;
         button.classList.toggle("is-active", isActive);
@@ -198,17 +228,35 @@ function setActivePlayer(playerId) {
         area.classList.toggle("is-inactive", !isActive);
         const title = area.querySelector("h2");
         if (title) {
-            let label = isActive ? "Your Board" : "Opponent";
+            const label = isActive ? "Your Board" : "Opponent";
             title.textContent = `Player ${area.dataset.player} (${label})`;
         }
     });
 }
 
-
 playerButtons.forEach((button) => {
     button.addEventListener("click", () => {
         setActivePlayer(button.dataset.player);
     });
+});
+
+shipButton.addEventListener("click", () => {
+    if (shipsLocked) {
+        return;
+    }
+
+    if (!activePlayerId) {
+        alert("Select a player first.");
+        return;
+    }
+
+    const activeBoard = document.querySelector(`.player-area[data-player="${activePlayerId}"] .game-board`);
+    if (activeBoard) {
+        placeShipsOnBoard(activeBoard);
+        shipsLocked = true;
+        shipButton.disabled = true;
+        shipButton.textContent = "Ships Locked";
+    }
 });
     </script>
 </body>
