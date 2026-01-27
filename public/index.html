@@ -40,11 +40,28 @@
     background-color: #f3f7fb;
     cursor: pointer;
     font-weight: 600;
+    transition: all 150ms ease;
 }
 
 .playerSel.is-active {
     background-color: #1c3d5a;
     color: white;
+}
+
+.playerSel:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #e0e0e0;
+}
+
+.playerSel.my-player {
+    border: 3px solid #28a745;
+    background-color: #d4edda;
+}
+
+.playerSel.taken {
+    background-color: #f8d7da;
+    border-color: #dc3545;
 }
 
 .game-board {
@@ -80,9 +97,15 @@
 
 .shipRand {
     background-color: red;
+    padding: 10px 20px;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 150ms ease;
 }
 
-.shipRand:hover {
+.shipRand:hover:not(:disabled) {
     background-color: pink;
 }
 
@@ -121,10 +144,8 @@
         </div>
     </div>
 <div class="container">
-    <button class="shipRand">Randomize Ships</button>
+    <button class="shipRand" disabled>Select a player</button>
 </div>
-
-
 
     <script>
         //Board creation
@@ -154,11 +175,11 @@ const ships = [
 ];
 
 function getCell(board, row, col) {
-    let index = row * boardSize + col;
+    const index = row * boardSize + col;
     return board.querySelectorAll(".cell")[index];
 }
 
-function randomInt(maxExclusive) { //AI helped a lot with this for function cuz I was so lost but I placed comments to show I can describe whats going on
+function randomInt(maxExclusive) {
     return Math.floor(Math.random() * maxExclusive);
 }
 
@@ -171,93 +192,147 @@ function placeShipsOnBoard(board) {
     ships.forEach((ship) => {
         let placed = false;
 
-        while (!placed) {
-            const isHorizontal = Math.random() < 0.5; //randomize if the ship will hor or vert
-            const maxRow = isHorizontal ? boardSize - 1 : boardSize - ship.size; //malmost like shifting the coord system for vert and hor
-            const maxCol = isHorizontal ? boardSize - ship.size : boardSize - 1;
-            const startRow = randomInt(maxRow + 1); //selects starting position
+        while (!placed) { //AI helped create this ship placement mechanic
+            const isHorizontal = Math.random() < 0.5; //here making it random whether the ship is horizontal or vertical
+            const maxRow = isHorizontal ? boardSize - 1 : boardSize - ship.size;
+            const maxCol = isHorizontal ? boardSize - ship.size : boardSize - 1;//calculating max starting positions
+            const startRow = randomInt(maxRow + 1); //AI helped create this ship placement mechanic
             const startCol = randomInt(maxCol + 1);
             const coords = [];
 
-            for (let i = 0; i < ship.size; i += 1) { //AI helped a lot with this for loop cuz I was so lost but I placed comments to show I can describe whats going on
+            for (let i = 0; i < ship.size; i += 1) { //checking if the ship can fit in the chosen position
                 const row = startRow + (isHorizontal ? 0 : i);
-                const col = startCol + (isHorizontal ? i : 0); //here we're assigning variables for the index of the row and oclumn
-                const key = `${row},${col}`; //this is the index of the square
+                const col = startCol + (isHorizontal ? i : 0); //calculating each cell the ship would occupy
+                const key = `${row},${col}`;//creating a key for each cell to return back to check for occupation
 
-                if (occupied.has(key)) {
-                    coords.length = 0; //this is saying if the square is occupied don't place anything and break the loop
+                if (occupied.has(key)) { //if any cell is already occupied, break and try again
+                    coords.length = 0;
                     break;
                 }
 
-                coords.push({ row, col, key }); // otherwise these coords can place a ship 
+                coords.push({ row, col, key });//storing the coordinates if the cell is free
             }
 
-            if (coords.length === ship.size) { //check the length of the coords that can place a ship and place a ship acordingly
+            if (coords.length === ship.size) {
                 coords.forEach(({ row, col, key }) => {
                     occupied.add(key);
-                    const cell = getCell(board, row, col); // will mark taken squares ass occupied
+                    const cell = getCell(board, row, col);
                     if (cell) {
-                        cell.classList.add("ship"); //add the ship class to each of the squares for css to take place
+                        cell.classList.add("ship");
                     }
                 });
-                placed = true; // end the loop
+                placed = true;
             }
         }
     });
 }
 
-//Player selection mechanic
+//Player assignment mechanic
 const playerButtons = document.querySelectorAll(".playerSel");
 const playerAreas = document.querySelectorAll(".player-area");
 const shipButton = document.querySelector(".shipRand");
-let activePlayerId = null;
+let myPlayerId = null;
 let shipsLocked = false;
 
-function setActivePlayer(playerId) {
-    activePlayerId = playerId;
-
-    playerButtons.forEach((button) => {
-        const isActive = button.dataset.player === playerId;
-        button.classList.toggle("is-active", isActive);
-        button.setAttribute("aria-pressed", String(isActive));
-    });
-
-    playerAreas.forEach((area) => {
-        const isActive = area.dataset.player === playerId;
-        area.classList.toggle("is-active", isActive);
-        area.classList.toggle("is-inactive", !isActive);
-        const title = area.querySelector("h2");
-        if (title) {
-            const label = isActive ? "Your Board" : "Opponent";
-            title.textContent = `Player ${area.dataset.player} (${label})`;
-        }
-    });
+function getClientId() {
+    const stored = localStorage.getItem("battleshipClientId");
+    if (stored) {
+        return stored;
+    }
+    const newId = (crypto.randomUUID && crypto.randomUUID()) || `client-${Date.now()}`; //AI is helpful with UUID syntax i didn't really know how to do this 
+    localStorage.setItem("battleshipClientId", newId);
+    return newId;
 }
 
-playerButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-        setActivePlayer(button.dataset.player);
-    });
-});
+const clientId = getClientId();
+console.log("My Client ID:", clientId);
 
-shipButton.addEventListener("click", () => {
+function setMyPlayer(playerId) {
+    myPlayerId = playerId;
+
+    // Hide player selection buttons
+    document.querySelector("h1").textContent = `You are Player ${playerId}`;
+    document.querySelector(".container").style.display = "none";
+
+    // Show only my board as active
+    playerAreas.forEach((area) => {
+        const areaPlayerId = area.dataset.player;
+        const isMyBoard = areaPlayerId === playerId;
+        
+        area.classList.toggle("is-active", isMyBoard);
+        area.classList.toggle("is-inactive", !isMyBoard);
+        
+        const title = area.querySelector("h2");
+        if (title) {
+            const label = isMyBoard ? "Your Board" : `Opponent ${areaPlayerId}`;
+            title.textContent = label;
+        }
+    });
+
+    updateShipButton();
+}
+
+function updateShipButton() {
+    if (!myPlayerId) {
+        shipButton.disabled = true;
+        shipButton.textContent = "Waiting for player assignment...";
+        return;
+    }
+
+    shipButton.disabled = shipsLocked;
+    shipButton.textContent = shipsLocked ? "Ships Locked" : "Randomize Ships";
+}
+
+async function joinGame() { //AI helped create an auto join feature so we can drop the buttons and make it so that the game automatically assigns you to a player
+    try {
+        const response = await fetch(`/api/join?clientId=${clientId}`);
+        const data = await response.json(); //get which player ID is next available
+        
+        console.log("Join response:", data);
+
+        if (data.success) {
+            setMyPlayer(data.playerId);
+            shipsLocked = false;
+            alert(data.message); // Notify user of their player assignment
+        } else {
+            alert(data.error || "Could not join game"); // Show error if joining failed
+        }
+    } catch (error) { //gives a server error alert if something goes wrong with the fetch
+        console.error("Failed to join game:", error);
+        alert("Server error. Please refresh the page."); 
+    }
+}
+
+shipButton.addEventListener("click", async () => {
+    
+
     if (shipsLocked) {
         return;
     }
 
-    if (!activePlayerId) {
-        alert("Select a player first.");
-        return;
-    }
-
-    const activeBoard = document.querySelector(`.player-area[data-player="${activePlayerId}"] .game-board`);
-    if (activeBoard) {
-        placeShipsOnBoard(activeBoard);
+    const myBoard = document.querySelector(`.player-area[data-player="${myPlayerId}"] .game-board`);//ai is really helpful with syntax 
+    if (myBoard) {
+        placeShipsOnBoard(myBoard);
         shipsLocked = true;
-        shipButton.disabled = true;
-        shipButton.textContent = "Ships Locked";
+        
+        // Send lock status to server
+        try {
+            await fetch("/api/lock-ships", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ playerId: myPlayerId, clientId })
+            });
+            console.log("Ships locked on server");
+        } catch (error) {
+            console.error("Failed to lock ships:", error);
+        }
+        
+        updateShipButton();
     }
 });
-    </script>
+
+// Auto-join on page load
+joinGame();
+</script>
 </body>
 </html>
