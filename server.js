@@ -1,117 +1,165 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT =  process.env.PORT||3000;
+
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Store player assignments: { clientId: playerId }
-let clientToPlayer = {};
 
-// Store ship lock status: { playerId: boolean }
-let shipsLocked = {
+let dataStore = [{player: "Player", pTurn: "Turn", squareState: "Active, Neutral, Hit"}];
+
+const players = {
+    "1": null,
+    "2": null,
+    "3": null
+};
+
+const shipsByPlayer = {
+    "1": [],
+    "2": [],
+    "3": []
+};
+
+const shipsLocked = {
     "1": false,
     "2": false,
     "3": false
 };
 
-// Get or assign player based on clientId
-app.get('/api/join', (req, res) => {
-    const clientId = req.query.clientId;
-    
-    if (!clientId) {
-        return res.status(400).json({ error: "Missing clientId" });
-    }
+let attacks = [];
+let currentTurn = "1";
 
-    // Check if this client already has a player
-    if (clientToPlayer[clientId]) {
-        const playerId = clientToPlayer[clientId];
-        console.log(`Client ${clientId} already has player ${playerId}`);
-        return res.json({ 
-            success: true, 
-            playerId, 
-            locked: true,
-            message: "You are already assigned to a player" 
-        });
-    }
+function getPlayerForClient(clientId) {
+    return Object.keys(players).find((id) => players[id] === clientId) || null;
+}
 
-    // Find first available player
-    const takenPlayers = new Set(Object.values(clientToPlayer));
-    let assignedPlayer = null;
+function getNextPlayer(id) {
+    if (id === "1") return "2";
+    if (id === "2") return "3";
+    return "1";
+}
 
-    for (let i = 1; i <= 3; i++) {
-        if (!takenPlayers.has(String(i))) {
-            assignedPlayer = String(i);
-            break;
-        }
-    }
-
-    if (!assignedPlayer) {
-        return res.status(409).json({ 
-            error: "All players are taken",
-            success: false 
-        });
-    }
-
-    // Assign player to client
-    clientToPlayer[clientId] = assignedPlayer;
-    console.log(`Assigned player ${assignedPlayer} to client ${clientId}`);
-    console.log('Current assignments:', clientToPlayer);
-
-    res.json({ 
-        success: true, 
-        playerId: assignedPlayer,
-        locked: true,
-        message: `You are Player ${assignedPlayer}` 
-    });
+app.get('/api/messages', (req, res) => {
+    res.json(dataStore);
 });
 
-// Get current game state
+app.post('/api/messages',(req, res) =>{
+    dataStore.push(req.body);
+    res.status(201).send({message:"Received!"});
+});
+
 app.get('/api/players', (req, res) => {
-    const players = {
-        "1": null,
-        "2": null,
-        "3": null
-    };
-
-    // Fill in which clients have which players
-    Object.entries(clientToPlayer).forEach(([clientId, playerId]) => {
-        players[playerId] = clientId;
-    });
-
-    res.json({ players, shipsLocked });
+    res.json({ players });
 });
 
-// Lock ships for a player
-app.post('/api/lock-ships', (req, res) => {
-    const { playerId, clientId } = req.body;
+app.post('/api/select', (req, res) => {
+    const playerId = String(req.body.playerId || "");
+    const clientId = String(req.body.clientId || "");
 
-    if (!playerId || !clientId) {
-        return res.status(400).json({ error: "Missing playerId or clientId" });
+    if (!["1", "2", "3"].includes(playerId)) {
+        res.status(400).json({ ok: false, reason: "invalid_player" });
+        return;
     }
 
-    // check this client owns this player
-    if (clientToPlayer[clientId] !== playerId) {
-        return res.status(403).json({ error: "Not your player" });
+    if (!clientId) {
+        res.status(400).json({ ok: false, reason: "missing_client" });
+        return;
+    }
+
+    Object.keys(players).forEach((id) => {
+        if (players[id] === clientId && id !== playerId) {
+            players[id] = null;
+        }
+    });
+
+    const current = players[playerId];
+    if (current && current !== clientId) {
+        res.status(409).json({ ok: false, reason: "taken" });
+        return;
+    }
+
+    players[playerId] = clientId;
+    res.json({ ok: true, playerId });
+});
+
+app.get('/api/join', (req, res) => {
+    const clientId = String(req.query.clientId || "");
+    if (!clientId) {
+        res.status(400).json({ success: false, error: "missing_client" });
+        return;
+    }
+
+    const existing = getPlayerForClient(clientId);
+    if (existing) {
+        res.json({ success: true, playerId: existing, message: `Rejoined as Player ${existing}` });
+        return;
+    }
+
+    const openPlayer = Object.keys(players).find((id) => !players[id]);
+    if (!openPlayer) {
+        res.json({ success: false, error: "All players are taken." });
+        return;
+    }
+
+    players[openPlayer] = clientId;
+    res.json({ success: true, playerId: openPlayer, message: `You are Player ${openPlayer}` });
+});
+
+app.get('/api/game-state', (req, res) => {
+    res.json({ currentTurn, attacks });
+});
+
+app.post('/api/store-ships', (req, res) => {
+    const playerId = String(req.body.playerId || "");
+    const positions = Array.isArray(req.body.positions) ? req.body.positions : [];
+
+    if (!shipsByPlayer[playerId]) {
+        res.status(400).json({ success: false, error: "invalid_player" });
+        return;
+    }
+
+    shipsByPlayer[playerId] = positions;
+    res.json({ success: true });
+});
+
+app.post('/api/lock-ships', (req, res) => {
+    const playerId = String(req.body.playerId || "");
+
+    if (!shipsLocked.hasOwnProperty(playerId)) {
+        res.status(400).json({ success: false, error: "invalid_player" });
+        return;
     }
 
     shipsLocked[playerId] = true;
-    console.log(`Ships locked for player ${playerId}`);
-    res.status(200).json({ success: true, playerId });
+    res.json({ success: true });
 });
 
-// Reset game (optional - for testing) AI helped make a reset button to test the game
-app.post('/api/reset', (req, res) => {
-    clientToPlayer = {};
-    shipsLocked = {
-        "1": false,
-        "2": false,
-        "3": false
-    };
-    console.log('Game reset');
-    res.json({ success: true, message: "Game reset" });
+app.post('/api/attack', (req, res) => {
+    const attackerId = String(req.body.attackerId || "");
+    const targetPlayer = String(req.body.targetPlayer || "");
+    const row = String(req.body.row || "");
+    const col = String(req.body.col || "");
+
+    if (attackerId !== currentTurn) {
+        res.json({ success: false, error: "not_your_turn" });
+        return;
+    }
+
+    if (!shipsByPlayer[targetPlayer]) {
+        res.json({ success: false, error: "invalid_target" });
+        return;
+    }
+
+    const key = `${row},${col}`;
+    const isHit = shipsByPlayer[targetPlayer].includes(key);
+
+    attacks.push({ attackerId, targetPlayer, row: Number(row), col: Number(col), isHit });
+    currentTurn = getNextPlayer(currentTurn);
+
+    res.json({ success: true, isHit, nextTurn: currentTurn });
 });
 
-app.listen(PORT, () => console.log(`Server: http://localhost:${PORT}`));
+app.listen(PORT,() => console.log(`Server: http://localhost:${PORT}`));

@@ -27,11 +27,17 @@
     opacity: 0.5;
 }
 
+.player-area.target-selected {
+    border: 3px solid orange;
+    padding: 10px;
+}
+
 .container {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
     margin-bottom: 10px;
+    justify-content: center;
 }
 
 .playerSel {
@@ -83,20 +89,25 @@
     background-color: #add8e6;
 }
 
+.cell.selected-target {
+    background-color: yellow;
+    border: 2px solid orange;
+}
+
 .ship {
     background-color: #2c5f8a;
 }
 
 .hit {
-    background-color: red;
+    background-color: red !important;
 }
 
 .miss {
-    background-color: gray;
+    background-color: gray !important;
 }
 
 .shipRand {
-    background-color: red;
+    background-color: #007bff;
     padding: 10px 20px;
     border: none;
     color: white;
@@ -106,12 +117,61 @@
 }
 
 .shipRand:hover:not(:disabled) {
-    background-color: pink;
+    background-color: #0056b3;
 }
 
 .shipRand:disabled {
     background-color: #7a7a7a;
     cursor: not-allowed;
+}
+
+.confirmAttack {
+    background-color: #dc3545;
+    padding: 10px 20px;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+}
+
+.confirmAttack:hover:not(:disabled) {
+    background-color: #c82333;
+}
+
+.confirmAttack:disabled {
+    background-color: #7a7a7a;
+    cursor: not-allowed;
+}
+
+.resetGame {
+    background-color: #ffc107;
+    padding: 10px 20px;
+    border: none;
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+}
+
+.resetGame:hover {
+    background-color: #e0a800;
+}
+
+#turnIndicator {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 20px;
+    padding: 15px;
+    background-color: #f0f0f0;
+    border-radius: 8px;
+}
+
+#attackStatus {
+    font-size: 18px;
+    margin: 10px;
+    padding: 10px;
+    min-height: 30px;
 }
     </style>
 </head>
@@ -123,6 +183,10 @@
         <button class="playerSel" data-player="2">Player 2</button>
         <button class="playerSel" data-player="3">Player 3</button>
     </div>
+
+<!--Game Status-->
+    <div id="turnIndicator">Waiting for players...</div>
+    <div id="attackStatus"></div>
 
 <!--Boards-->
  <h1>3 Player Battleship</h1>
@@ -143,8 +207,11 @@
             <div id="messages-p3" class="messages"></div>
         </div>
     </div>
+    
 <div class="container">
-    <button class="shipRand" disabled>Select a player</button>
+    <button class="shipRand" disabled>Randomize Ships</button>
+    <button class="confirmAttack" disabled>Confirm Attack</button>
+    <button class="resetGame">Reset Game</button>
 </div>
 
     <script>
@@ -176,44 +243,44 @@ const ships = [
 
 function getCell(board, row, col) {
     const index = row * boardSize + col;
-    return board.querySelectorAll(".cell")[index];
+    return board.querySelectorAll(".cell")[index]; //get specific cell
 }
 
 function randomInt(maxExclusive) {
-    return Math.floor(Math.random() * maxExclusive);
+    return Math.floor(Math.random() * maxExclusive); //random integer generator
 }
 
-function placeShipsOnBoard(board) {
-    const cells = board.querySelectorAll(".cell");
-    cells.forEach((cell) => cell.classList.remove("ship"));
+function placeShipsOnBoard(board) { //place ships randomly on board
+    const cells = board.querySelectorAll(".cell"); //get all cells
+    cells.forEach((cell) => cell.classList.remove("ship"));//clear previous ships
 
-    const occupied = new Set();
+    const occupied = new Set(); //track occupied cells
 
-    ships.forEach((ship) => {
-        let placed = false;
+    ships.forEach((ship) => { //place each ship
+        let placed = false; //flag for placement
 
-        while (!placed) { //AI helped create this ship placement mechanic
-            const isHorizontal = Math.random() < 0.5; //here making it random whether the ship is horizontal or vertical
-            const maxRow = isHorizontal ? boardSize - 1 : boardSize - ship.size;
-            const maxCol = isHorizontal ? boardSize - ship.size : boardSize - 1;//calculating max starting positions
-            const startRow = randomInt(maxRow + 1); //AI helped create this ship placement mechanic
-            const startCol = randomInt(maxCol + 1);
-            const coords = [];
+        while (!placed) { //try until each ship is placed
+            const isHorizontal = Math.random() < 0.5; //random orientation
+            const maxRow = isHorizontal ? boardSize - 1 : boardSize - ship.size; //calculate max start positions
+            const maxCol = isHorizontal ? boardSize - ship.size : boardSize - 1; 
+            const startRow = randomInt(maxRow + 1);//random start row
+            const startCol = randomInt(maxCol + 1);//random start column
+            const coords = [];//store ship coordinates
 
-            for (let i = 0; i < ship.size; i += 1) { //checking if the ship can fit in the chosen position
-                const row = startRow + (isHorizontal ? 0 : i);
-                const col = startCol + (isHorizontal ? i : 0); //calculating each cell the ship would occupy
-                const key = `${row},${col}`;//creating a key for each cell to return back to check for occupation
+            for (let i = 0; i < ship.size; i += 1) {//check each cell for placement
+                const row = startRow + (isHorizontal ? 0 : i);//calculate row
+                const col = startCol + (isHorizontal ? i : 0);//calculate column
+                const key = `${row},${col}`; //unique cell key
 
-                if (occupied.has(key)) { //if any cell is already occupied, break and try again
+                if (occupied.has(key)) {//check if cell is occupied
                     coords.length = 0;
                     break;
                 }
 
-                coords.push({ row, col, key });//storing the coordinates if the cell is free
+                coords.push({ row, col, key });//store valid coordinate
             }
 
-            if (coords.length === ship.size) {
+            if (coords.length === ship.size) { //if all cells valid, place ship
                 coords.forEach(({ row, col, key }) => {
                     occupied.add(key);
                     const cell = getCell(board, row, col);
@@ -228,34 +295,42 @@ function placeShipsOnBoard(board) {
 }
 
 //Player assignment mechanic
-const playerButtons = document.querySelectorAll(".playerSel");
-const playerAreas = document.querySelectorAll(".player-area");
+const playerAreas = document.querySelectorAll(".player-area"); 
+const playerButtons = document.querySelectorAll(".playerSel"); 
 const shipButton = document.querySelector(".shipRand");
-let myPlayerId = null;
-let shipsLocked = false;
+const confirmButton = document.querySelector(".confirmAttack");
+const resetButton = document.querySelector(".resetGame");
+const turnIndicator = document.getElementById("turnIndicator");
+const attackStatus = document.getElementById("attackStatus");
 
-function getClientId() {
+let myPlayerId = null; //assignes games initial status
+let shipsLocked = false;
+let selectedTargetPlayer = null;
+let selectedCell = null;
+let currentTurn = "1";
+
+//AI helped create the client ID system and taught me how to use it
+function getClientId() { 
     const stored = localStorage.getItem("battleshipClientId");
     if (stored) {
         return stored;
     }
-    const newId = (crypto.randomUUID && crypto.randomUUID()) || `client-${Date.now()}`; //AI is helpful with UUID syntax i didn't really know how to do this 
+    const newId = (crypto.randomUUID && crypto.randomUUID()) || `client-${Date.now()}`;//generate unique client ID
     localStorage.setItem("battleshipClientId", newId);
     return newId;
 }
 
-const clientId = getClientId();
-console.log("My Client ID:", clientId);
+
 
 function setMyPlayer(playerId) {
     myPlayerId = playerId;
 
-    // Hide player selection buttons
+   
     document.querySelector("h1").textContent = `You are Player ${playerId}`;
     document.querySelector(".container").style.display = "none";
 
     // Show only my board as active
-    playerAreas.forEach((area) => {
+    playerAreas.forEach((area) => { 
         const areaPlayerId = area.dataset.player;
         const isMyBoard = areaPlayerId === playerId;
         
@@ -267,9 +342,78 @@ function setMyPlayer(playerId) {
             const label = isMyBoard ? "Your Board" : `Opponent ${areaPlayerId}`;
             title.textContent = label;
         }
+
+        // Add click listeners to opponent boards for targeting AI helped make this if statement but I had the idea
+        if (!isMyBoard) {
+            area.style.cursor = "pointer";
+            area.addEventListener("click", () => selectTargetPlayer(areaPlayerId));
+        }
     });
 
     updateShipButton();
+    updateTurnDisplay();
+}
+
+function selectTargetPlayer(targetPlayerId) {
+    if (currentTurn !== myPlayerId) {
+        attackStatus.textContent = "It's not your turn!";
+        return;
+    }
+
+    if (!shipsLocked) {
+        attackStatus.textContent = "Place your ships first!";
+        return;
+    }
+
+
+    playerAreas.forEach(area => area.classList.remove("target-selected"));
+    
+    // Set new target
+    selectedTargetPlayer = targetPlayerId;
+    const targetArea = document.querySelector(`.player-area[data-player="${targetPlayerId}"]`);
+    targetArea.classList.add("target-selected");
+    
+    attackStatus.textContent = `Selected opponent: Player ${targetPlayerId}. Now click a cell on their board.`;
+    
+
+    enableCellSelection(targetPlayerId);
+}
+
+function enableCellSelection(targetPlayerId) {// AI helped make this function which enables cell selection on the targeted player's board
+    // Remove all previous cell listeners
+    document.querySelectorAll(".cell").forEach(cell => {//remove previous listeners
+        cell.replaceWith(cell.cloneNode(true));//remove all listeners
+    });
+
+    const targetBoard = document.querySelector(`.player-area[data-player="${targetPlayerId}"] .game-board`);//get targeted player's board
+    const cells = targetBoard.querySelectorAll(".cell");//get all cells on that board
+    
+    cells.forEach(cell => {
+        if (!cell.classList.contains("hit") && !cell.classList.contains("miss")) { //only add listener to un-attacked cells
+            cell.addEventListener("click", () => selectCellToAttack(cell, targetPlayerId)); //add click listener
+        }
+    });
+}
+
+function selectCellToAttack(cell, targetPlayerId) {
+    if (currentTurn !== myPlayerId) {
+        attackStatus.textContent = "It's not your turn!";
+        return;
+    }
+
+    // Clear previous cell selection
+    document.querySelectorAll(".selected-target").forEach(c => c.classList.remove("selected-target"));
+    
+    // Select new cell
+    cell.classList.add("selected-target");
+    selectedCell = {
+        row: cell.dataset.row,
+        col: cell.dataset.col,
+        targetPlayer: targetPlayerId
+    };
+    
+    attackStatus.textContent = `Selected cell (${cell.dataset.row}, ${cell.dataset.col}) on Player ${targetPlayerId}'s board. Click Confirm Attack!`;
+    confirmButton.disabled = false;
 }
 
 function updateShipButton() {
@@ -283,23 +427,60 @@ function updateShipButton() {
     shipButton.textContent = shipsLocked ? "Ships Locked" : "Randomize Ships";
 }
 
-async function joinGame() { //AI helped create an auto join feature so we can drop the buttons and make it so that the game automatically assigns you to a player
+function updateTurnDisplay() {
+    if (currentTurn === myPlayerId) {
+        turnIndicator.textContent = `YOUR TURN - Player ${currentTurn}`;
+        turnIndicator.style.backgroundColor = "#90EE90";
+    } else {
+        turnIndicator.textContent = `Player ${currentTurn}'s Turn`;
+        turnIndicator.style.backgroundColor = "#FFB6C1";
+    }
+}
+
+async function joinGame() {
     try {
         const response = await fetch(`/api/join?clientId=${clientId}`);
-        const data = await response.json(); //get which player ID is next available
+        const data = await response.json();
         
         console.log("Join response:", data);
 
         if (data.success) {
             setMyPlayer(data.playerId);
             shipsLocked = false;
-            alert(data.message); // Notify user of their player assignment
+            alert(data.message);
         } else {
-            alert(data.error || "Could not join game"); // Show error if joining failed
+            alert(data.error || "Could not join game");
         }
-    } catch (error) { //gives a server error alert if something goes wrong with the fetch
+    } catch (error) {
         console.error("Failed to join game:", error);
-        alert("Server error. Please refresh the page."); 
+        alert("Server error. Please refresh the page.");
+    }
+}
+
+async function refreshGameState() {
+    try {
+        const response = await fetch("/api/game-state");
+        const data = await response.json();
+        
+        currentTurn = data.currentTurn;
+        updateTurnDisplay();
+        
+        // Update all boards with hits and misses AI helped make this part to update the game for all players
+        if (data.attacks) {
+            data.attacks.forEach(attack => {
+                const board = document.querySelector(`.player-area[data-player="${attack.targetPlayer}"] .game-board`);
+                const cell = getCell(board, attack.row, attack.col);
+                if (cell) {
+                    if (attack.isHit) {
+                        cell.classList.add("hit");
+                    } else {
+                        cell.classList.add("miss");
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Failed to refresh game state:", error);
     }
 }
 
@@ -310,18 +491,41 @@ shipButton.addEventListener("click", async () => {
         return;
     }
 
-    const myBoard = document.querySelector(`.player-area[data-player="${myPlayerId}"] .game-board`);//ai is really helpful with syntax 
+    const myBoard = document.querySelector(`.player-area[data-player="${myPlayerId}"] .game-board`);
     if (myBoard) {
         placeShipsOnBoard(myBoard);
+        
+        // COLLECT SHIP POSITIONS
+        const shipCells = myBoard.querySelectorAll(".ship");
+        const positions = [];
+        shipCells.forEach(cell => {
+            positions.push(`${cell.dataset.row},${cell.dataset.col}`);
+        });
+        
+        console.log("Ship positions:", positions);
+        
         shipsLocked = true;
         
         // Send lock status to server
         try {
+            
+            await fetch("/api/store-ships", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    playerId: myPlayerId, 
+                    clientId,
+                    positions 
+                })
+            });
+            
+            
             await fetch("/api/lock-ships", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ playerId: myPlayerId, clientId })
             });
+            
             console.log("Ships locked on server");
         } catch (error) {
             console.error("Failed to lock ships:", error);
@@ -331,8 +535,74 @@ shipButton.addEventListener("click", async () => {
     }
 });
 
-// Auto-join on page load
+confirmButton.addEventListener("click", async () => {
+    if (currentTurn !== myPlayerId) {
+        alert("It's not your turn!");
+        return;
+    }
+
+    if (!selectedCell) {
+        alert("Select a cell to attack first!");
+        return;
+    }
+
+    try {
+        const response = await fetch("/api/attack", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                attackerId: myPlayerId,
+                targetPlayer: selectedCell.targetPlayer,
+                row: selectedCell.row,
+                col: selectedCell.col,
+                clientId: clientId
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const resultText = data.isHit ? "HIT!" : "MISS!";
+            attackStatus.textContent = `${resultText} - Player ${data.nextTurn}'s turn now.`;
+            
+            // Apply result to board
+            const targetBoard = document.querySelector(`.player-area[data-player="${selectedCell.targetPlayer}"] .game-board`);
+            const cell = getCell(targetBoard, selectedCell.row, selectedCell.col);
+            if (cell) {
+                cell.classList.remove("selected-target");
+                if (data.isHit) {
+                    cell.classList.add("hit");
+                } else {
+                    cell.classList.add("miss");
+                }
+            }
+
+            // Clear selection
+            selectedCell = null;
+            selectedTargetPlayer = null;
+            playerAreas.forEach(area => area.classList.remove("target-selected"));
+            confirmButton.disabled = true;
+
+            // Refresh game state
+            await refreshGameState();
+        } else {
+            alert(data.error || "Attack failed");
+        }
+    } catch (error) {
+        console.error("Attack error:", error);
+        alert("Server error during attack");
+    }
+});
+
+
+
+
+const clientId = getClientId(); //I had a big error here I couldn't find and AI saved me by telling me to define clientId before using it
+console.log("My Client ID:", clientId);
+
 joinGame();
-</script>
+
+setInterval(refreshGameState, 2000);
+    </script>
 </body>
 </html>
