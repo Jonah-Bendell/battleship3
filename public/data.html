@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Battleship Data</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      background-color: #f6f8fb;
+      color: #1d1d1f;
+    }
+
+    h1, h2 {
+      margin: 0 0 12px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      margin-bottom: 24px;
+    }
+
+    th, td {
+      border: 1px solid #d9dfe7;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #e9eef5;
+    }
+
+    .status-hit {
+      color: #b00020;
+      font-weight: 700;
+    }
+
+    .status-miss {
+      color: #3a6ea5;
+      font-weight: 700;
+    }
+
+    .note {
+      color: #5c6470;
+      margin-bottom: 18px;
+    }
+  .simple-nav {
+  display: flex;
+  gap: 12px;
+  padding: 10px 14px;
+  margin: 0 0 16px 0;
+  background: #ffffff;
+  border: 1px solid #d9dfe7;
+  border-radius: 10px;
+  width: fit-content;
+}
+
+.simple-nav a {
+  text-decoration: none;
+  color: #1d1d1f;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.simple-nav a.active {
+  background: #1c3d5a;
+  color: white;
+}
+</style>
+</head>
+<body>
+<nav class="simple-nav"><a href="index.html">Game</a><a href="data.html" class="active">Data</a></nav>
+  <h1>Battleship Data</h1>
+  <p class="note">Auto-refreshing every 2 seconds.</p>
+
+  <h2>Attack History</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Turn #</th>
+        <th>Attacker</th>
+        <th>Target</th>
+        <th>Cell</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody id="attackRows"></tbody>
+  </table>
+
+  <h2>Active Squares Left</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th>Active Squares</th>
+      </tr>
+    </thead>
+    <tbody id="activeRows"></tbody>
+  </table>
+
+  <script>
+    function createCell(text, className) {
+      const td = document.createElement("td");
+      td.textContent = text;
+      if (className) {
+        td.className = className;
+      }
+      return td;
+    }
+
+    function uniqueHitsForPlayer(attacks, playerId) {
+      const hitCells = new Set();
+      attacks.forEach((attack) => {
+        if (attack.targetPlayer === playerId && attack.isHit) {
+          hitCells.add(`${attack.row},${attack.col}`);
+        }
+      });
+      return hitCells.size;
+    }
+
+    async function loadData() {
+      try {
+        const response = await fetch("/api/game-state");
+        const data = await response.json();
+
+        const attacks = Array.isArray(data.attacks) ? data.attacks : [];
+        const shipsByPlayer = data.shipsByPlayer || {};
+
+        const attackBody = document.getElementById("attackRows");
+        attackBody.innerHTML = "";
+
+        if (attacks.length === 0) {
+          const row = document.createElement("tr");
+          const cell = document.createElement("td");
+          cell.colSpan = 5;
+          cell.textContent = "No attacks yet.";
+          row.appendChild(cell);
+          attackBody.appendChild(row);
+        } else {
+          attacks.forEach((attack, index) => {
+            const row = document.createElement("tr");
+            row.appendChild(createCell(String(index + 1)));
+            row.appendChild(createCell(`Player ${attack.attackerId}`));
+            row.appendChild(createCell(`Player ${attack.targetPlayer}`));
+            row.appendChild(createCell(`(${attack.row}, ${attack.col})`));
+            const resultText = attack.isHit ? "HIT" : "MISS";
+            const resultClass = attack.isHit ? "status-hit" : "status-miss";
+            row.appendChild(createCell(resultText, resultClass));
+            attackBody.appendChild(row);
+          });
+        }
+
+        const activeBody = document.getElementById("activeRows");
+        activeBody.innerHTML = "";
+
+        ["1", "2", "3"].forEach((playerId) => {
+          const row = document.createElement("tr");
+          row.appendChild(createCell(`Player ${playerId}`));
+
+          const totalShips = Array.isArray(shipsByPlayer[playerId])
+            ? shipsByPlayer[playerId].length
+            : 0;
+          const hits = uniqueHitsForPlayer(attacks, playerId);
+
+          let activeText = "Not placed";
+          if (totalShips > 0) {
+            const active = Math.max(0, totalShips - hits);
+            activeText = String(active);
+          }
+
+          row.appendChild(createCell(activeText));
+          activeBody.appendChild(row);
+        });
+      } catch (error) {
+        console.error("Failed to load data", error);
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 2000);
+  </script>
+</body>
+</html>
+

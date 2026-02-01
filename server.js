@@ -109,7 +109,7 @@ app.get('/api/join', (req, res) => {
 });
 
 app.get('/api/game-state', (req, res) => {
-    res.json({ currentTurn, attacks });
+    res.json({ currentTurn, attacks, shipsByPlayer, shipsLocked });
 });
 
 app.post('/api/store-ships', (req, res) => {
@@ -163,3 +163,4 @@ app.post('/api/attack', (req, res) => {
 });
 
 app.listen(PORT,() => console.log(`Server: http://localhost:${PORT}`));
+
