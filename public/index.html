@@ -144,19 +144,9 @@
     cursor: not-allowed;
 }
 
-.resetGame {
-    background-color: #ffc107;
-    padding: 10px 20px;
-    border: none;
-    color: black;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 150ms ease;
-}
 
-.resetGame:hover {
-    background-color: #e0a800;
-}
+
+
 
 #turnIndicator {
     font-size: 24px;
@@ -172,6 +162,15 @@
     margin: 10px;
     padding: 10px;
     min-height: 30px;
+}
+
+#stats {
+    font-size: 16px;
+    margin: 10px;
+    padding: 8px 12px;
+    background-color: #f0f0f0;
+    border-radius: 6px;
+    display: inline-block;
 }
 
 .loading-dots::after {
@@ -230,7 +229,8 @@
 
 <!--Game Status-->
    <div id="turnIndicator">Waiting for players<span class="loading-dots"></span></div>
-    <div id="attackStatus"></div>
+   <!--win rate-->
+    <div id="attackStatus"></div>    <div id="stats">W: 0 L: 0 (0% win rate)</div>
 
 <!--Boards-->
  <h1>3 Player Battleship</h1>
@@ -255,10 +255,47 @@
 <div class="container">
     <button class="shipRand" disabled>Randomize Ships</button>
     <button class="confirmAttack" disabled>Confirm Attack</button>
-    <button class="resetGame">Reset Game</button>
+
 </div>
 
+
+
     <script>
+
+function updateStats(won) {
+    let wins = parseInt(getCookie('wins')) || 0;
+    let losses = parseInt(getCookie('losses')) || 0;
+    
+    if (won) {
+        wins++;
+        document.cookie = `wins=${wins}; max-age=31536000`;
+    } else {
+        losses++;
+        document.cookie = `losses=${losses}; max-age=31536000`;
+    }
+    
+    displayStats(wins, losses);
+}
+
+function displayStats(wins, losses) {
+    const total = wins + losses;
+    const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : 0;
+    document.getElementById('stats').textContent = 
+        `W: ${wins} L: ${losses} (${winRate}% win rate)`;
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+        return parts.pop().split(';').shift();
+    }
+    return null;
+}
+
+const initialWins = parseInt(getCookie('wins')) || 0;
+const initialLosses = parseInt(getCookie('losses')) || 0;
+displayStats(initialWins, initialLosses);
         //Board creation
 const boardSize = 10;
 
@@ -358,7 +395,7 @@ const playerAreas = document.querySelectorAll(".player-area");
 const playerButtons = document.querySelectorAll(".playerSel"); 
 const shipButton = document.querySelector(".shipRand");
 const confirmButton = document.querySelector(".confirmAttack");
-const resetButton = document.querySelector(".resetGame");
+
 const turnIndicator = document.getElementById("turnIndicator");
 const attackStatus = document.getElementById("attackStatus");
 
@@ -680,4 +717,5 @@ setInterval(refreshGameState, 2000);
     </script>
 </body>
 </html>
+
 
