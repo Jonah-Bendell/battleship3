@@ -259,9 +259,33 @@
 </div>
 
 
+<button onclick="
+    let name = prompt('Enter your name:');
+    if (name) {
+        let params = new URLSearchParams(window.location.search);
+        params.set('name', name);
+        window.location.href = '?' + params.toString();
+    }
+" style="background-color: teal; color: white; padding: 8px 14px; border: 2px solid #0d5d5d; cursor: pointer; font-weight: 600;">
+    Set Name
+</button>
+
 
     <script>
 
+function getPlayerName() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('name') || 'Player';
+}
+
+const playerName = getPlayerName();
+
+// Use it when setting your player:
+function setMyPlayer(playerId) {
+    myPlayerId = playerId;
+    document.querySelector("h1").textContent = `${playerName} - ${getDisplayName(playerId)}`;
+
+}
 function updateStats(won) {
     let wins = parseInt(getCookie('wins')) || 0;
     let losses = parseInt(getCookie('losses')) || 0;
@@ -416,13 +440,23 @@ function getClientId() {
     return newId;
 }
 
+function getDisplayName(playerId) {
+    const params = new URLSearchParams(window.location.search);
+    const myName = params.get('name');
+    
+    if (playerId === myPlayerId && myName) {
+        return myName;
+    }
+    return `Player ${playerId}`; 
+}
+
 
 
 function setMyPlayer(playerId) {
     myPlayerId = playerId;
 
    
-    document.querySelector("h1").textContent = `You are Player ${playerId}`;
+    document.querySelector("h1").textContent = `You are ${getDisplayName(playerId)}`;
     document.querySelector(".container").style.display = "none";
 
     // Show only my board as active
@@ -469,7 +503,7 @@ function selectTargetPlayer(targetPlayerId) {
     const targetArea = document.querySelector(`.player-area[data-player="${targetPlayerId}"]`);
     targetArea.classList.add("target-selected");
     
-    attackStatus.textContent = `Selected opponent: Player ${targetPlayerId}. Now click a cell on their board.`;
+    attackStatus.textContent = `Selected opponent: ${getDisplayName(targetPlayerId)}. Now click a cell on their board.`;
     
 
     enableCellSelection(targetPlayerId);
@@ -508,7 +542,7 @@ function selectCellToAttack(cell, targetPlayerId) {
         targetPlayer: targetPlayerId
     };
     
-    attackStatus.textContent = `Selected cell (${cell.dataset.row}, ${cell.dataset.col}) on Player ${targetPlayerId}'s board. Click Confirm Attack!`;
+    attackStatus.textContent = `Selected cell (${cell.dataset.row}, ${cell.dataset.col}) on ${getDisplayName(targetPlayerId)}'s board. Click Confirm Attack!`;
     confirmButton.disabled = false;
 }
 
@@ -674,7 +708,7 @@ confirmButton.addEventListener("click", async () => {
 
         if (data.success) {
             const resultText = data.isHit ? "HIT!" : "MISS!";
-            attackStatus.textContent = `${resultText} - Player ${data.nextTurn}'s turn now.`;
+            attackStatus.textContent = `${resultText} - ${getDisplayName(data.nextTurn)}'s turn now.`;
             
             // Apply result to board
             const targetBoard = document.querySelector(`.player-area[data-player="${selectedCell.targetPlayer}"] .game-board`);
