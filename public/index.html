@@ -287,6 +287,30 @@
 
     <script>
 
+function updateSessionTimer() {
+    const cookie = getCookie('battleshipClientId');
+    if (!cookie) {
+        document.getElementById('timeLeft').textContent = 'Expired';
+        return;
+    }
+    
+
+    const cookieStart = parseInt(getCookie('battleshipTimestamp')) || Date.now();
+    const elapsed = Date.now() - cookieStart;
+    const remaining = Math.max(0, 900 - Math.floor(elapsed / 1000)); 
+    
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    document.getElementById('timeLeft').textContent = 
+        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Save timestamp when creating new session
+if (!getCookie('battleshipTimestamp')) {
+    document.cookie = `battleshipTimestamp=${Date.now()}; max-age=900`;
+}
+
+setInterval(updateSessionTimer, 1000);
 function getPlayerName() {
     const params = new URLSearchParams(window.location.search);
     return params.get('name') || 'Player';
