@@ -256,14 +256,16 @@
     <button class="shipRand" disabled>Randomize Ships</button>
     <button class="confirmAttack" disabled>Confirm Attack</button>
     <button onclick="
-        if (confirm('Reset the entire game for ALL players?')) {
-            fetch('/api/reset', { method: 'POST' })
-                .then(() => {
-                    localStorage.removeItem('battleshipClientId');
-                    alert('Game reset! Refreshing...');
-                    location.reload();
-                });
-        }
+    if (confirm('Reset the entire game for ALL players?')) {
+        fetch('/api/reset', { method: 'POST' })
+            .then(() => {
+                // Clear both cookie and localStorage
+                document.cookie = 'battleshipClientId=; max-age=0';
+                localStorage.removeItem('battleshipClientId');
+                alert('Game reset! Refreshing...');
+                location.reload();
+            });
+    }
     " style="background-color: #ffc107; padding: 10px 20px; border: none; color: black; font-weight: bold; cursor: pointer;">
     Reset Game
     </button>
@@ -443,12 +445,30 @@ let currentTurn = "1";
 
 //AI helped create the client ID system and taught me how to use it
 function getClientId() { 
+    // Try to get from cookie first
+    const cookieId = getCookie('battleshipClientId');
+    if (cookieId) {
+        console.log('Using clientId from cookie:', cookieId);
+        return cookieId;
+    }
+    
+    // Try localStorage as backup
     const stored = localStorage.getItem("battleshipClientId");
     if (stored) {
+        console.log('Found clientId in localStorage, moving to cookie:', stored);
+        // Move to cookie with 15-minute expiration
+        document.cookie = `battleshipClientId=${stored}; max-age=900`; // 900 seconds = 15 minutes
         return stored;
     }
+    
+    // Generate new ID
     const newId = (crypto.randomUUID && crypto.randomUUID()) || `client-${Date.now()}`;//generate unique client ID
+    console.log('Generated new clientId:', newId);
+    
+    // Save to both cookie (15 min) and localStorage (backup)
+    document.cookie = `battleshipClientId=${newId}; max-age=900`; // 15 minutes
     localStorage.setItem("battleshipClientId", newId);
+    
     return newId;
 }
 
