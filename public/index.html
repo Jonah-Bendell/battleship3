@@ -255,7 +255,18 @@
 <div class="container">
     <button class="shipRand" disabled>Randomize Ships</button>
     <button class="confirmAttack" disabled>Confirm Attack</button>
-
+    <button onclick="
+        if (confirm('Reset the entire game for ALL players?')) {
+            fetch('/api/reset', { method: 'POST' })
+                .then(() => {
+                    localStorage.removeItem('battleshipClientId');
+                    alert('Game reset! Refreshing...');
+                    location.reload();
+                });
+        }
+    " style="background-color: #ffc107; padding: 10px 20px; border: none; color: black; font-weight: bold; cursor: pointer;">
+        🔄 Reset Game
+    </button>
 </div>
 
 
@@ -269,6 +280,7 @@
 " style="background-color: teal; color: white; padding: 8px 14px; border: 2px solid #0d5d5d; cursor: pointer; font-weight: 600;">
     Set Name
 </button>
+
 
 
     <script>
