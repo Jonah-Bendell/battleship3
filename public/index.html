@@ -229,8 +229,7 @@
 
 <!--Game Status-->
    <div id="turnIndicator">Waiting for players<span class="loading-dots"></span></div>
-   <!--win rate-->
-    <div id="attackStatus"></div>    <div id="stats">W: 0 L: 0 (0% win rate)</div>
+   
 
 <!--Boards-->
  <h1>3 Player Battleship</h1>
@@ -326,27 +325,7 @@ function setMyPlayer(playerId) {
     document.querySelector("h1").textContent = `${playerName} - ${getDisplayName(playerId)}`;
 
 }
-function updateStats(won) {
-    let wins = parseInt(getCookie('wins')) || 0;
-    let losses = parseInt(getCookie('losses')) || 0;
-    
-    if (won) {
-        wins++;
-        document.cookie = `wins=${wins}; max-age=31536000`;
-    } else {
-        losses++;
-        document.cookie = `losses=${losses}; max-age=31536000`;
-    }
-    
-    displayStats(wins, losses);
-}
 
-function displayStats(wins, losses) {
-    const total = wins + losses;
-    const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : 0;
-    document.getElementById('stats').textContent = 
-        `W: ${wins} L: ${losses} (${winRate}% win rate)`;
-}
 
 function getCookie(name) {
     const value = `; ${document.cookie}`;
